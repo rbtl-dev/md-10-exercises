@@ -1,0 +1,253 @@
+---
+title: "Question types"
+format:
+  html:
+    embed-resources: true
+    toc: true
+execute:
+  warning: false
+editor_options: 
+  chunk_output_type: console
+editor: visual
+---
+
+## Load R packages
+
+
+```{r}
+library(tidyverse)
+library(gt)
+```
+
+## Import
+
+```{r}
+df_binary <- read_csv("data/01_binary.csv")
+df_likert <-  read_csv("data/02_likert.csv")
+df_multi_choice <- read_csv("data/03_multi-choice.csv")
+df_text <- read_csv("data/04_text.csv")
+```
+
+## Explore
+
+```{r}
+
+## 01 binary data
+
+df_binary |> 
+  distinct(var_a)
+
+df_binary |> 
+  distinct(var_b)
+
+## 02 likert data
+
+df_likert |> 
+  distinct(var_c)
+
+## 03 multiple choice data
+
+df_multi_choice |> 
+  distinct(var_d)
+
+## 04 text data
+
+df_text |> 
+  distinct(var_f)
+
+df_text |> 
+  distinct(var_g)
+```
+
+
+## Transform
+
+### Binary data
+
+```{r}
+
+## 01 binary data
+## clean data
+
+df_binary_clean <- df_binary |> 
+  mutate(var_a = case_when(
+    var_a == 999 ~ NA,
+    .default = var_a
+  )) # |> 
+  ## optional, remove NAs from further analysis if they are not needed
+  # filter(!is.na(var_a)) |> 
+  # filter(!is.na(var_b))
+  
+## summarize data  
+  
+df_binary_var_a_count <- df_binary_clean |> 
+  group_by(var_a) |> 
+  summarise(n = n()) |> 
+  mutate(percentage = n / sum(n) * 100)
+
+df_binary_var_b_count <-  df_binary_clean |> 
+  group_by(var_b) |> 
+  summarise(n = n()) |> 
+  mutate(percentage = n / sum(n) * 100)
+
+
+
+```
+
+### Likert data
+
+```{r}
+
+## 02 likert data
+## nothing to clean, data is already clean
+
+## summarize data  
+
+df_likert_sum <- df_likert |> 
+  group_by(var_c) |> 
+  summarise(n = n()) |> 
+  mutate(percentage = n / sum(n) * 100)
+```
+
+### Multiple choice data
+
+```{r}
+## 03 multiple choice data
+
+
+## extract number of observations (rows) for percentage calculation
+observations_n <- nrow(df_multi_choice)
+## clean data
+
+df_multi_choice_clean <-  df_multi_choice |> 
+  mutate(var_d = case_when(
+    var_d == 999 ~ NA,
+    .default = var_d
+  )) |> 
+  mutate(
+    var_d = str_split(var_d, "")
+  ) |> 
+  unnest(var_d) 
+
+## summarize data
+
+df_multi_choice_clean_sum <- df_multi_choice_clean |> 
+  group_by(var_d) |>
+  summarise(
+    n = n()
+  ) |> 
+  mutate(
+    ## calculate percentage using the number of observations
+    percentage = n / observations_n  * 100
+  )
+
+```
+
+### Text data
+
+```{r}
+## 04 text data
+## clean data
+
+df_text_clean <- df_text |> 
+  mutate(var_g = case_when(
+    var_g == "once every seven days" ~ "weekly",
+    .default = var_g
+  )) |> 
+  mutate(var_g = factor(var_g, levels = c("daily", "weekly", "monthly", "yearly"))) |> 
+  filter(!is.na(var_g)) 
+
+## summarize data
+df_text_clean_sum <- df_text_clean |> 
+  group_by(var_g) |> 
+  summarise(
+    n = n()
+  ) |> 
+  mutate(
+    percentage = n / sum(n) * 100
+  )
+```
+
+## Visualize
+
+## Binary data
+
+```{r}
+
+## 01 binary data
+## as tables
+
+df_binary_var_a_count  |> 
+  gt() |> 
+  fmt_number(
+    columns = c(percentage),
+    decimals = 1
+  ) 
+
+df_binary_var_b_count |>
+  gt() |> 
+  fmt_number(
+    columns = c(percentage),
+    decimals = 1
+  ) 
+
+```
+
+## Likert data
+
+```{r}
+
+## 02 likert data
+## as a table
+
+df_likert_sum |> 
+  gt() |> 
+  fmt_number(
+    columns = c(percentage),
+    decimals = 1
+  ) 
+
+## as a plot with counts
+
+df_likert_sum |> 
+  ggplot(aes(x = var_c, y = n)) +
+  geom_col() +
+  labs(
+    title = "Likert data",
+    x = "Likert scale",
+    y = "Count"
+  )
+
+
+```
+
+## Multiple choice data
+
+```{r}
+## 03 multiple choice data
+
+df_multi_choice_clean_sum |> 
+  gt() |> 
+  fmt_number(
+    columns = c(percentage),
+    decimals = 1
+  ) 
+
+```
+
+## Text data
+
+```{r}
+## 04 text data
+df_text_clean_sum |> 
+  gt() |> 
+  fmt_number(
+    columns = c(percentage),
+    decimals = 1
+  )
+```
+
+## Communicate
+
+- Let's render
+
